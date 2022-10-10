@@ -1,0 +1,15 @@
+{
+	"name": "sac",
+	"version": "1.0.0",
+	"description": "Smart Answer Checker",
+	"main": "index.js",
+	"scripts": {
+	  "test": "node tests/auto.js",
+	  "interactive-test": "node tests/interactive.js"
+	},
+	"author": "NoNiMad",
+	"license": "MIT",
+	"dependencies": {
+	  "fastest-levenshtein": "^1.0.16"
+	}
+    }
