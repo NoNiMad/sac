@@ -10,7 +10,9 @@ const validAnswers = [
 	"H1Z1: King of the Kill",
 	"Pretty Girls Mahjong Solitaire",
 	"Assassin's Creed Origins",
-	"Lego Star Wars : La Saga Skywalker"
+	"Lego Star Wars : La Saga Skywalker",
+	"Death Stranding",
+	"Mortal Kombat X"
 ];
 const abbreviations = {
 	"Assassin's Creed": "AC",
@@ -57,7 +59,7 @@ async function main()
 	{
 		for (const validAnswer of validAnswers)
 		{
-			if (sac.check(validAnswer, answer, abbreviations))
+			if (sac.check(validAnswer, answer, { abbreviations }))
 				return validAnswer;
 		}
 

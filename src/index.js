@@ -1,47 +1,49 @@
-const { distance } = require('fastest-levenshtein');
+const { distance } = require("fastest-levenshtein");
 
 const romanHash = {
-	I: 1,
-	V: 5,
-	X: 10,
-	L: 50,
-	C: 100,
-	D: 500,
-	M: 1000,
+	i: 1,
+	v: 5,
+	x: 10,
+	l: 50,
+	c: 100,
+	d: 500,
+	m: 1000,
 };
 const romanCharacters = Object.keys(romanHash);
 
 function romanToInt(s)
 {
+	s = s.toLowerCase();
+
 	let accumulator = 0;
 	for (let i = 0; i < s.length; i++)
 	{
-		if (s[i] === "I" && s[i + 1] === "V")
+		if (s[i] === "i" && s[i + 1] === "v")
 		{
 			accumulator += 4;
 			i++;
 		}
-		else if (s[i] === "I" && s[i + 1] === "X")
+		else if (s[i] === "i" && s[i + 1] === "x")
 		{
 			accumulator += 9;
 			i++;
 		}
-		else if (s[i] === "X" && s[i + 1] === "L")
+		else if (s[i] === "x" && s[i + 1] === "l")
 		{
 			accumulator += 40;
 			i++;
 		}
-		else if (s[i] === "X" && s[i + 1] === "C")
+		else if (s[i] === "x" && s[i + 1] === "c")
 		{
 			accumulator += 90;
 			i++;
 		}
-		else if (s[i] === "C" && s[i + 1] === "D")
+		else if (s[i] === "c" && s[i + 1] === "d")
 		{
 			accumulator += 400;
 			i++;
 		}
-		else if (s[i] === "C" && s[i + 1] === "M")
+		else if (s[i] === "c" && s[i + 1] === "m")
 		{
 			accumulator += 900;
 			i++;
@@ -66,28 +68,31 @@ function isLetterOrDigit(char)
 		|| char >= '0' && char <= '9';
 }
 
-function tokenEqual(valid, input)
+function tokenEqual(valid, input, tolerance)
 {
-	//console.log("Check if token match: " + valid.trim() + " =?= " + input.trim());
+	const cleanValid = toAsciiCharSet(valid.trim()).toLowerCase();
+	const cleanInput = toAsciiCharSet(input.trim()).toLowerCase();
+	
+	//console.log(`Check if token match: "${cleanValid}" =?= "${cleanInput}" (originally "${valid}" and "${input}")`);
 
-	if (isRomanNumber(valid))
+	if (isRomanNumber(cleanValid))
 	{
 		// Roman number as int must match exactly input as int
-		return isNaN(input) ? valid == input : romanToInt(valid) == parseInt(input, 10);
+		return isNaN(input) ? cleanValid == cleanInput : romanToInt(cleanValid) == parseInt(cleanInput, 10);
 	}
-	if (!isNaN(valid) && !isNaN(input))
+	if (!isNaN(cleanValid) && !isNaN(cleanInput))
 	{
 		// Numbers must be exactly equal
-		return parseInt(valid, 10) == parseInt(input, 10);
+		return parseInt(cleanValid, 10) == parseInt(cleanInput, 10);
 	}
 	else
 	{
-		const validToCompare = toAsciiCharSet(valid).toLowerCase().replaceAll(" ", "");
-		const inputToCompare = toAsciiCharSet(input).toLowerCase().replaceAll(" ", "");
-		const tolerance = Math.floor(valid.length / 5);
+		const validToCompare = cleanValid.replaceAll(" ", "");
+		const inputToCompare = cleanInput.replaceAll(" ", "");
+		const allowedErrors = Math.floor(cleanValid.length / tolerance);
 
-		// String tokens should match with a tolerance of 1 mistake every 5 characters
-		return distance(validToCompare, inputToCompare) <= tolerance;
+		// String tokens should match with 1 mistake every <tolerance> characters
+		return distance(validToCompare, inputToCompare) <= allowedErrors;
 	}
 }
 
@@ -102,11 +107,11 @@ function toAsciiCharSet(str, keepSpaces)
 		.join("");
 }
 
-function doesMatch(valid, input)
+function doesMatch(valid, input, tolerance)
 {
-	//console.log("Checking if propositions match: " + valid + " =?= " + input);
+	//console.log(`Checking if propositions matches: ${valid} =?= ${input}`);
 
-	if (!valid.includes(" ") && tokenEqual(valid, input))
+	if (!valid.includes(" ") && tokenEqual(valid, input, tolerance))
 		return true;
 
 	if (valid.includes(":"))
@@ -114,20 +119,19 @@ function doesMatch(valid, input)
 		const splitByColon = valid.split(":");
 		for (const part of splitByColon)
 		{
-			if (doesMatch(part.trim(), input))
+			if (doesMatch(part.trim(), input, tolerance))
 			{
 				return true;
 			}
 		}
 	}
 
-	const validParts = valid.split(" ");
-	const inputParts = input.split(" ");
+	const validParts = valid.split(" ").filter(part => part.length > 0);
+	const inputParts = input.split(" ").filter(part => part.length > 0);
 	if (inputParts.length == validParts.length)
 	{
-		const allPartsEquals = validParts.every((validPart, index) => {
-			return tokenEqual(validPart, inputParts[index])
-		});
+		const allPartsEquals = validParts.every(
+			(validPart, index) => tokenEqual(validPart, inputParts[index], tolerance));
 		if (allPartsEquals)
 			return true;
 	}
@@ -156,7 +160,7 @@ function getOrComputeAnswerList(validAnswer, options)
 		return answerListCache[validAnswer];
 
 	const answerList = [ validAnswer ];
-	for (const [abbreviated, original] of Object.entries(options.abbreviations))
+	for (const [original, abbreviated] of Object.entries(options.abbreviations))
 	{
 		if (validAnswer.includes(original))
 		{
@@ -176,11 +180,12 @@ function getOrComputeAnswerList(validAnswer, options)
 function check(validAnswer, answer, options)
 {
 	options = Object.assign({}, defaultOptions, options);
+	answer = answer.trim();
 
-	const validAnswerList = getOrComputeAnswerList(validAnswer, options);
+	const validAnswerList = getOrComputeAnswerList(validAnswer, options);	
 	for (const va of validAnswerList)
 	{
-		if (doesMatch(va, answer))
+		if (doesMatch(va, answer, options.tolerance))
 			return true;
 	}
 
